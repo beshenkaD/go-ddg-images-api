@@ -32,6 +32,8 @@ type Query struct {
 	Moderate bool
 }
 
+var re = regexp.MustCompile(`vqd=([\d-]+)\&`)
+
 func token(keywords string) (string, error) {
 	r, err := http.NewRequest("GET", URL, nil)
 	if err != nil {
@@ -52,7 +54,6 @@ func token(keywords string) (string, error) {
 		return "", err
 	}
 
-	re := regexp.MustCompile(`vqd=([\d-]+)\&`)
 	token := re.Find(body)
 
 	if token == nil {
