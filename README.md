@@ -10,7 +10,9 @@ import ddg "github.com/beshenkaD/go-ddg-images-api"
 ## Use
 ```go
 func main() {
-        r, err := ddg.Do(ddg.Query{
+        ddgClient := ddg.NewClient(http.DefaultClient)
+
+        r, err := ddgClient.Do(ddg.Query{
                 Keywords: "duck",
                 Moderate: true,
         })

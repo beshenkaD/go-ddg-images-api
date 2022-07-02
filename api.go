@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"regexp"
 )
@@ -32,22 +33,33 @@ type Query struct {
 	Moderate bool
 }
 
+type Client struct {
+	httpClient *http.Client
+	debug      bool
+}
+
+func NewClient(httpClient *http.Client) Client {
+	return Client{httpClient: httpClient, debug: false}
+}
+
+func (c *Client) EnableDebug() {
+	c.debug = true
+}
+
 var re = regexp.MustCompile(`vqd=([\d-]+)\&`)
 
-func token(keywords string) (string, error) {
-	r, err := http.NewRequest("GET", URL, nil)
-	if err != nil {
-		return "", err
-	}
-
+func (c *Client) token(keywords string) (string, error) {
+	r, _ := http.NewRequest("GET", URL, nil)
 	addParams(r, map[string]string{
 		"q": keywords,
 	})
 
-	res, err := http.DefaultClient.Do(r)
+	res, err := c.httpClient.Do(r)
 	if err != nil {
 		return "", err
 	}
+
+	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -57,57 +69,52 @@ func token(keywords string) (string, error) {
 	token := re.Find(body)
 
 	if token == nil {
+		if c.debug {
+			log.Println(string(body))
+		}
+
 		return "", errors.New("token parsing failed")
 	}
 
 	return string(token)[4:], nil
 }
 
-func mod(b bool) string {
-	if b {
-		return "1"
-	}
-
-	return "-1"
-}
-
-func Do(query Query) (*Result, error) {
+func (c *Client) Do(query Query) (*Result, error) {
 	if len(query.Keywords) == 0 {
 		return nil, errors.New("not enough keywords")
 	}
 
-	tok, err := token(query.Keywords)
+	tok, err := c.token(query.Keywords)
 	if err != nil {
 		return nil, err
 	}
 
-	r, err := http.NewRequest("GET", URL+"i.js", nil)
-	if err != nil {
-		return nil, err
-	}
+	r, _ := http.NewRequest("GET", URL+"i.js", nil)
 	addParams(r, map[string]string{
-		"vqd":   tok,
-		"l":     "en-us",
-		"o":     "json",
-		"q":     query.Keywords,
-		"f":     ",,,",
-		"p":     mod(query.Moderate),
+		"vqd": tok,
+		"l":   "en-us",
+		"o":   "json",
+		"q":   query.Keywords,
+		"f":   ",,,",
+		"p": func(b bool) string {
+			if b {
+				return "1"
+			}
+			return "-1"
+		}(query.Moderate),
+
 		"v7exp": "a",
 	})
 	headers(r)
 
-	res, err := http.DefaultClient.Do(r)
+	res, err := c.httpClient.Do(r)
 	if err != nil {
 		return nil, err
 	}
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
+	defer res.Body.Close()
 
 	result := Result{}
-	err = json.Unmarshal(body, &result)
+	err = json.NewDecoder(res.Body).Decode(&result)
 	if err != nil {
 		return nil, err
 	}

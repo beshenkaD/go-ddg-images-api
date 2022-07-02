@@ -1,27 +1,24 @@
 package goddgimagesapi
 
 import (
+	"net/http"
 	"testing"
 )
 
 func Test(t *testing.T) {
-	_, err := token("duck")
-	if err != nil {
-		t.Log(err)
-		t.Fail()
-	}
+	client := NewClient(http.DefaultClient)
 
-	res, err := Do(Query{
+	result, err := client.Do(Query{
 		Keywords: "duck",
-		Moderate: false,
+		Moderate: true,
 	})
+
 	if err != nil {
 		t.Log(err)
 		t.Fail()
 	}
 
-	if len(res.Results) == 0 {
-		t.Log("no results!")
+	if len(result.Results) == 0 {
 		t.Fail()
 	}
 }
