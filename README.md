@@ -10,12 +10,7 @@ import ddg "github.com/beshenkaD/go-ddg-images-api"
 ## Use
 ```go
 func main() {
-        ddgClient := ddg.NewClient(http.DefaultClient)
-
-        r, err := ddgClient.Do(ddg.Query{
-                Keywords: "duck",
-                Moderate: true,
-        })
+        r, err := ddg.Do("duck", true)
 
         if err != nil {
                 panic(err)
